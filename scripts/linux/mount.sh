@@ -11,6 +11,8 @@ root_partition=$(fdisk -lo device,size /dev/sda | grep -E '^\/dev\/' | tr -s ' '
 
 if [[ "$1" == "centos"* ]] || [[ "$1" == "rocky"* ]] || [[ "$1" == "alma"* ]] || [[ "$1" == "rhel"* ]]; then
     mount -o nouuid $root_partition /mnt
+elif [[ "$1" == "freebsd"* ]]; then
+    mount -t ufs -o ufstype=ufs2 $root_partition /mnt
 else
     mount $root_partition /mnt
 fi
