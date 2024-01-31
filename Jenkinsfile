@@ -67,6 +67,11 @@ switch(OS) {
         script_base = "debian10"
         break
 
+    case "Kali 2023":
+        base_name = "Kali-2023"
+        script_base = "kali2023"
+        break
+
     case "Windows Server 2019":
         base_name = "WindowsServer-2019"
         packer_script = "windows.pkr.hcl"

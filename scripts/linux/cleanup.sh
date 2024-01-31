@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-if [[ ! "$1" == "debian"* ]] && [[ ! "$1" == "ubuntu"* ]]; then
+if [[ ! "$1" == "debian"* ]] && [[ ! "$1" == "ubuntu"* ]] && [[ ! "$1" == "kali"* ]]; then
 	rm -f /mnt/etc/resolv.conf
 fi
 

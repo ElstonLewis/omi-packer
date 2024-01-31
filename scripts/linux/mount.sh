@@ -19,7 +19,7 @@ mount -o bind /dev /mnt/dev
 mount -o bind /proc /mnt/proc
 mount -o bind /sys /mnt/sys
 
-if [[ "$1" == "debian"* ]]; then
+if [[ "$1" == "debian"* ]] || [[ "$1" == "kali"* ]]; then
     # Get EFI partition
     efi_partition=$(fdisk -lo device,type /dev/sda | grep -E '^\/dev\/' | tr -s ' ' | grep -E 'EFI' | head -n1 | cut -d ' ' -f1)
     mkdir -p /mnt/boot/efi
