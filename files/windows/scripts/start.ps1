@@ -6,8 +6,8 @@
 .NOTES
     Name of file    : start.ps1
     Author          : Outscale
-    Date            : December 2016
-    Version         : 1.3
+    Date            : November 16th, 2023
+    Version         : 1.7
     #>
 
     <# Functions #>
@@ -115,6 +115,7 @@
      $date = $([DateTime]::Now.ToString("G"))
      Write-Host "$date : $data"
      Out-File -InputObject "$date : $data" -FilePath $pathLogFile -Append
+     SerialWrite($data)
    }
 
    # Return Windows License Status
@@ -288,29 +289,32 @@ try {
   WriteLog "Windows Activation Status = $(Get-ActivationStatus | Select -ExpandProperty Status)"
 
   # MTU
-  WriteLog "Updating MTU Ethernet Configuration"
+  WriteLog("*******************************************************************************")
+  WriteLog("Updating MTU Ethernet Configuration")
+
   # Network Interface
   Disable-NetAdapterBinding -InterfaceAlias "Ethernet" -ComponentID ms_tcpip6
   Disable-NetAdapterBinding -InterfaceAlias Ethernet -ComponentID ms_tcpip6
 
-  $netAdapter=Get-NetAdapterAdvancedProperty -Name "Ethernet"
-  $mtu = $netAdapter | Where-Object {$_.DisplayName -eq "Init.MTUSize"}
-
-  if ($mtu.DisplayValue -ne 8950)
-  {
-    Set-NetAdapterAdvancedProperty -Name "Ethernet" -DisplayName "Init.MTUSize" -DisplayValue 8950
+  $mtu = (Get-NetIPInterface -InterfaceAlias "Ethernet").NlMtu
+  if ($mtu -ne 8950) {
+    Set-NetAdapterAdvancedProperty -Name "Ethernet" -DisplayName "Jumbo Packet" -DisplayValue "8964"
+    WriteLog("Set-NetIPInterface Ethernet NlMtuBytes 8950")
+  } else {
+    WriteLog("Set-NetIPInterface Ethernet NlMtuBytes 8950 already set")
   }
 
   $adapterList = Get-ChildItem -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\NetworkCards\'
   $adapter = Get-ItemProperty -Path Registry::$adapterList -Name ServiceName
   $path = $adapter.ServiceName
-  try
-  {
+  try {
     Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\services\Tcpip\Parameters\Interfaces\$path\" | Select-Object -ExpandProperty MTU -ErrorAction Stop | Out-Null
-  }
-  catch
-  {
-    New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\services\Tcpip\Parameters\Interfaces\$path\" -Name "MTU" -Value 9000 -PropertyType "DWord" | Out-Null
+    WriteLog("Registry ItemProperty Ethernet MTU 8950 already set")
+   }
+   catch
+   {
+    New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\services\Tcpip\Parameters\Interfaces\$path\" -Name "MTU" -Value 8950 -PropertyType "DWord" | Out-Null
+    WriteLog("Applied Registry New-ItemProperty Ethernet MTU 8950")
   }
 
   WriteLog "Enable Remote Desktop"
@@ -323,12 +327,41 @@ try {
   Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
   # Cleanup
-  Set-ExecutionPolicy RemoteSigned -Force
+  Set-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
 }
 
 catch [Exception]{
   WriteLog "### FAILED ### -> $_"
   WriteLog  "*******************************************************************************"
+}
+
+try {
+  if (Test-Path "HKLM:\Software\Microsoft\Microsoft SQL Server\Instance Names\SQL") {
+    WriteLog  "*******************************************************************************"
+    WriteLog "MSSQL Server configuration checks..."
+    $DBHostName = (Invoke-sqlcmd -query "select @@SERVERNAME" | ConvertTo-Csv -NoTypeInformation | select -Skip 1).Trim('"')
+    $HostName = [System.Net.DNS]::GetHostByName('').HostName.Trim()
+    $srvStatus = (get-service -ComputerName $HostName -Name MSSQLSERVER).Status
+    WriteLog "MSSQLSERVER status: $srvStatus"
+    if ($HostName.ToString() -eq $DBHostName.ToString()) {
+       WriteLog "Hostname matches DBHostName: $HostName, no actions needed!!"
+    }
+    else{
+      WriteLog "Updating MSSQL server hostname..."
+      WriteLog "EXEC sp_dropserver '$DBHostName';"
+      Invoke-Sqlcmd -Query "EXEC sp_dropserver '$DBHostName';"
+      WriteLog "EXEC sp_addserver '$HostName','local';"
+      Invoke-Sqlcmd -Query "EXEC sp_addserver '$HostName','local';"
+      WriteLog "stopping MSSQLserver..."
+      net stop MSSQLSERVER
+      WriteLog "starting MSSQLserver..."
+      net start MSSQLSERVER
+    }
+    WriteLog "MSSQL Server configuration checks complete..."
+  }
+}
+  catch [Exception] {
+   WriteLog "### FAILED ### -> $_"
 }
 
 try {

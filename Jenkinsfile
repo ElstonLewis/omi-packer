@@ -1,10 +1,16 @@
 import org.jenkinsci.plugins.workflow.support.steps.build.RunWrapper
 
-def volume_size = "10"
+def volume_size = "0"
 def packer_script = "linux.pkr.hcl"
 def script_base = ""
 def iso_url = ""
+def product_codes = ""
 switch(OS) {
+    case "Alma Linux 9":
+        base_name = "AlmaLinux-9"
+        script_base = "alma9"
+        break
+
     case "Rocky Linux 8":
         base_name = "RockyLinux-8"
         script_base = "rocky8"
@@ -50,6 +56,17 @@ switch(OS) {
         script_base = "ubuntu2204"
         break
 
+    case "Ubuntu 24.04":
+        base_name = "Ubuntu-24.04"
+        script_base = "ubuntu2404"
+        break
+
+    case "Debian 12":
+        base_name = "Debian-12"
+        script_base = "debian12"
+        volume_size = "20"
+        break
+
     case "Debian 11":
         base_name = "Debian-11"
         script_base = "debian11"
@@ -65,16 +82,25 @@ switch(OS) {
         packer_script = "windows.pkr.hcl"
         break
 
+    case "Windows Server 2019 SQL Server Web 2019":
+        base_name = "WindowsServer-2019-MSSQL-Web2019"
+        packer_script = "windows-sql.pkr.hcl"
+        iso_url = "https://oos.eu-west-2.outscale.com/omi/iso/SW_DVD9_SQL_Svr_Web_Ed_2019Dec2019_64Bit_English_MLF_X22-22250.ISO"
+        product_codes = "0002,0007"
+        break
+
     case "Windows Server 2019 SQL Standard 2019":
         base_name = "WindowsServer-2019-MSSQL-Std2019"
         packer_script = "windows-sql.pkr.hcl"
         iso_url = "https://oos.eu-west-2.outscale.com/omi/iso/SW_DVD9_NTRL_SQL_Svr_Standard_Edtn_2019Dec2019_64Bit_English_OEM_VL_X22-22109.ISO"
+        product_codes = "0002,0008"
         break
 
     case "Windows Server 2019 SQL Enterprise 2019":
         base_name = "WindowsServer-2019-MSSQL-Ent2019"
         packer_script = "windows-sql.pkr.hcl"
         iso_url = "https://oos.eu-west-2.outscale.com/omi/iso/SW_DVD9_NTRL_SQL_Svr_Ent_Core_2019Dec2019_64Bit_English_OEM_VL_X22-22120.ISO"
+        product_codes = "0002,0009"
         break
 
     case "Windows 10":
@@ -139,7 +165,8 @@ for (region in REGIONS.tokenize(",")) {
                 string(name: 'OVERRIDE_NAME', value: OVERRIDE_NAME),
                 string(name: 'BRANCH', value: BRANCH),
                 string(name: 'VOL_SIZE', value: volume_size),
-                string(name: 'ISO_URL', value: iso_url)
+                string(name: 'ISO_URL', value: iso_url),
+                string(name: 'OUTSCALE_PRODUCT_CODES', value: product_codes)
             ])
         }
     }
@@ -206,6 +233,7 @@ stage ("qa_omi") {
     parallel qa_branches
 }
 
+/*
 stage ("deploy_approval") {
     input "Publish OMI ?"
 }
@@ -228,3 +256,4 @@ stage ("publish_omi") {
         }
     }
 }
+*/

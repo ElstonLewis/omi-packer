@@ -23,8 +23,21 @@ export UOMI_NAME=$OUTSCALE_REGION-$OMI_NAME
 # Generate OMI
 export OUTSCALE_X509CERT='/var/lib/jenkins/cert/cert.pem'
 export OUTSCALE_X509KEY='/var/lib/jenkins/cert/key.pem'
-export PKR_VAR_volsize=$VOL_SIZE
+if [ "$VOL_SIZE" == 0 ] || [ -z "$VOL_SIZE" ]; then
+    unset PKR_VAR_volsize
+else
+    export PKR_VAR_volsize=$VOL_SIZE
+fi
+echo "packer env checks..."
+echo "product_code: `echo $OUTSCALE_PRODUCT_CODES`"
+echo "packer version `/bin/packer --version`"
+echo "packer plugins: `/bin/packer plugins installed`"
+
+#echo "executing /bin/packer init -upgrade ./config.pkr.hcl"
 /bin/packer init -upgrade ./config.pkr.hcl
+
+#export PACKER_LOG=1
+#echo "executing /bin/packer build -debug ./$PACKER_SCRIPT | tee /usr/local/packer/logs/$UOMI_NAME.log"
 /bin/packer build ./$PACKER_SCRIPT | tee /usr/local/packer/logs/$UOMI_NAME.log
 
 # Workaround for bad Packer exit code
